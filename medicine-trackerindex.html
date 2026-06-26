@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#7DBF96">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Мої ліки">
+<title>Мої ліки</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #E8F2EC; --surface: #FFFFFF; --card: #FFFFFF;
+    --border: #C2DEC9; --teal: #3D8F62;
+    --teal-dim: rgba(61,143,98,0.13); --teal-light: rgba(61,143,98,0.22);
+    --amber: #C9A96E; --amber-dim: rgba(201,169,110,0.13);
+    --red: #D98FA0; --text: #1E3028; --muted: #5E8570;
+    --done-bg: rgba(61,143,98,0.09);
+    --shadow: 0 1px 4px rgba(40,100,60,0.09), 0 4px 14px rgba(40,100,60,0.07);
+  }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh; padding: 24px 16px 60px;
+    padding-top: env(safe-area-inset-top, 24px);
+    overflow-x: hidden; user-select: none;
+  }
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
+  header p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  /* storage banner */
+  #storageBanner {
+    display: none; align-items: flex-start; gap: 10px;
+    background: #FFF8E8; border: 1px solid #F0D89A;
+    border-radius: 14px; padding: 12px 14px; margin-bottom: 16px;
+  }
+  #storageBanner.show { display: flex; }
+  #storageBanner p { flex:1; font-size: 12px; color: #7A5A10; line-height: 1.5; }
+  #storageBanner p b { display: block; font-size: 13px; margin-bottom: 2px; }
+  #dismissStorage { background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; padding:2px 4px; flex-shrink:0; }
+
+  /* export bar */
+  #exportBar {
+    display: flex; gap: 8px; margin-bottom: 16px;
+  }
+  .export-btn {
+    flex:1; padding: 10px 8px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--surface);
+    font-size: 12px; font-weight: 600; color: var(--teal);
+    cursor: pointer; text-align: center;
+    box-shadow: var(--shadow);
+  }
+  .export-btn:active { transform: scale(0.97); }
+
+  .date-nav { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:20px; }
+  .date-label { font-size:16px; font-weight:700; min-width:190px; text-align:center; color:var(--text); }
+  .date-nav button {
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    width:48px; height:48px; border-radius:14px; font-size:22px;
+    cursor:pointer; transition:all 0.15s;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:var(--shadow); -webkit-tap-highlight-color:transparent;
+  }
+  .date-nav button:active { transform:scale(0.93); background:var(--teal-dim); }
+
+  .day-progress {
+    background: linear-gradient(135deg, #7DBF96 0%, #5DAE88 100%);
+    border:none; border-radius:20px; padding:18px 20px; margin-bottom:20px;
+    display:flex; align-items:center; gap:16px;
+    box-shadow: 0 4px 20px rgba(60,140,90,0.28);
+  }
+  .day-ring { position:relative; width:56px; height:56px; flex-shrink:0; }
+  .day-ring svg { transform:rotate(-90deg); }
+  .day-ring-num {
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    font-size:16px; font-weight:700; color:#fff; line-height:1;
+  }
+  .day-ring-num span { font-size:9px; color:rgba(255,255,255,0.7); font-weight:400; }
+  .day-progress-text h3 { font-size:15px; font-weight:700; color:#fff; }
+  .day-progress-text p { font-size:12px; color:rgba(255,255,255,0.75); margin-top:2px; }
+
+  #swipeHint { text-align:center; font-size:11px; color:var(--muted); margin-bottom:12px; opacity:0.7; }
+
+  .card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:18px; margin-bottom:12px; overflow:hidden;
+    transition:border-color 0.2s; box-shadow:var(--shadow);
+  }
+  .card.all-done { background:var(--done-bg); border-color:rgba(61,143,98,0.35); }
+  .card-top { padding:14px 16px 10px; }
+  .card-header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+  .med-name { font-size:16px; font-weight:700; letter-spacing:-0.2px; }
+  .course-badge { font-size:10px; font-weight:600; padding:3px 8px; border-radius:20px; white-space:nowrap; flex-shrink:0; }
+  .course-badge.active { background:var(--teal-dim); color:var(--teal); }
+  .course-badge.long { background:var(--amber-dim); color:var(--amber); }
+  .course-badge.done-course { background:rgba(217,143,160,0.12); color:var(--red); }
+  .med-info { font-size:12px; color:var(--muted); margin-top:3px; }
+  .med-note {
+    display:inline-flex; align-items:center; gap:5px;
+    margin-top:8px; padding:5px 10px; border-radius:20px;
+    background:#FFF3DC; border:1px solid #F0D89A;
+    font-size:12px; font-weight:600; color:#A07020;
+  }
+  .course-bar-wrap { margin-top:10px; display:flex; align-items:center; gap:8px; }
+  .course-bar-bg { flex:1; height:5px; background:var(--border); border-radius:4px; overflow:hidden; }
+  .course-bar-fill { height:100%; border-radius:4px; background:var(--teal); transition:width 0.4s ease; }
+  .course-bar-label { font-size:10px; color:var(--muted); white-space:nowrap; }
+
+  .doses-row { display:flex; gap:8px; padding:10px 16px 14px; border-top:1px solid var(--border); background:#F4FAF6; }
+  .dose-btn {
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:5px;
+    padding:10px 6px; border-radius:12px; border:1.5px solid var(--border);
+    background:#fff; cursor:pointer; transition:all 0.18s; color:var(--muted);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .dose-btn:active { transform:scale(0.95); }
+  .dose-btn.taken { background:var(--teal-light); border-color:var(--teal); color:var(--teal); }
+  .dose-icon { font-size:18px; line-height:1; }
+  .dose-time { font-size:9px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; }
+  .dose-amount { font-size:10px; opacity:0.75; }
+  .once-btn {
+    flex:1; display:flex; align-items:center; justify-content:center; gap:8px;
+    padding:12px; border-radius:12px; border:1.5px solid var(--border);
+    background:#fff; cursor:pointer; transition:all 0.18s; color:var(--muted);
+    font-size:13px; font-weight:500; -webkit-tap-highlight-color:transparent;
+  }
+  .once-btn:active { transform:scale(0.97); }
+  .once-btn.taken { background:var(--teal-light); border-color:var(--teal); color:var(--teal); }
+  .finished-msg { text-align:center; padding:16px; font-size:13px; color:var(--muted); font-style:italic; }
+
+  .toast {
+    position:fixed; bottom:24px; left:50%;
+    transform:translateX(-50%) translateY(80px);
+    background:var(--text); color:#fff;
+    padding:10px 20px; border-radius:40px;
+    font-size:13px; font-weight:600;
+    transition:transform 0.3s ease; z-index:999; pointer-events:none;
+    box-shadow:0 4px 16px rgba(0,0,0,0.15);
+  }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+  @media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💊 Мої ліки</h1>
+  <p>Відмічай прийом щодня</p>
+</header>
+
+<div id="storageBanner">
+  <p><b>⚠️ Дані не зберігаються між сесіями</b>Збережи дані вручну через кнопки нижче після кожного прийому.</p>
+  <button id="dismissStorage">✕</button>
+</div>
+
+<div id="exportBar">
+  <button class="export-btn" id="saveBtn">💾 Зберегти дані</button>
+  <button class="export-btn" id="loadBtn">📂 Завантажити дані</button>
+</div>
+<input type="file" id="fileInput" accept=".json" style="display:none">
+
+<div class="date-nav">
+  <button id="prevDay">‹</button>
+  <div class="date-label" id="dateLabel"></div>
+  <button id="nextDay">›</button>
+</div>
+
+<div id="swipeHint">← свайп для зміни дня →</div>
+
+<div class="day-progress">
+  <div class="day-ring">
+    <svg width="56" height="56">
+      <circle cx="28" cy="28" r="23" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="4"/>
+      <circle cx="28" cy="28" r="23" fill="none" stroke="#ffffff" stroke-width="4"
+        stroke-linecap="round" stroke-dasharray="144.5" stroke-dashoffset="144.5" id="ringCircle"/>
+    </svg>
+    <div class="day-ring-num" id="ringNum">0<span>з 0</span></div>
+  </div>
+  <div class="day-progress-text">
+    <h3 id="progressTitle">Починаємо!</h3>
+    <p id="progressSub">Відмічай прийняті ліки</p>
+  </div>
+</div>
+
+<div id="medsContainer"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ DATA ============
+const MEDS = [
+  { id:'kortimen', name:'Кортимен', dose:'9 мг', startDate:'2026-06-26',
+    times:['morning'], timesLabel:{morning:'Ранок'}, timesIcon:{morning:'🌅'},
+    amount:'1 таблетка', courseDays:84, courseType:'long', note:null },
+  { id:'alfa', name:'Альфа-нормікс', dose:'2 таблетки',
+    times:['morning','day','evening'],
+    timesLabel:{morning:'Ранок',day:'День',evening:'Вечір'},
+    timesIcon:{morning:'🌅',day:'☀️',evening:'🌙'},
+    amount:'2 т', courseDays:10, courseType:'active', note:'Після їжі' },
+  { id:'metronidazol', name:'Метронідазол', dose:'2 таблетки',
+    times:['morning','day','evening'],
+    timesLabel:{morning:'Ранок',day:'День',evening:'Вечір'},
+    timesIcon:{morning:'🌅',day:'☀️',evening:'🌙'},
+    amount:'2 т', courseDays:7, courseType:'active', note:null },
+  { id:'meteoksan', name:'Метеоксан', dose:'2 капсули',
+    times:['morning','day','evening'],
+    timesLabel:{morning:'Ранок',day:'День',evening:'Вечір'},
+    timesIcon:{morning:'🌅',day:'☀️',evening:'🌙'},
+    amount:'2 к', courseDays:10, courseType:'active', note:'До їжі' },
+  { id:'kolonzak', name:'Колонзак', dose:'1 капсула',
+    times:['morning','evening'],
+    timesLabel:{morning:'Ранок',evening:'Вечір'},
+    timesIcon:{morning:'🌅',evening:'🌙'},
+    amount:'1 капс', courseDays:60, courseType:'long', note:null },
+  { id:'laklin', name:'Лаклін', dose:'1 пакет у 100мл води',
+    times:['evening'], timesLabel:{evening:'Вечір'}, timesIcon:{evening:'🌙'},
+    amount:'1 пакет', courseDays:null, courseType:'long',
+    note:'По потребі для нормалізації стільця' }
+];
+
+const startDate = '2026-06-27';
+
+// ============ STORAGE — IndexedDB з fallback на in-memory ============
+let data = {};
+let db = null;
+const DB_NAME = 'MedTracker', STORE = 'doses', DB_VER = 1;
+
+function openDB() {
+  return new Promise((res, rej) => {
+    if (!window.indexedDB) { rej('no idb'); return; }
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(STORE);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror = () => rej('idb error');
+  });
+}
+
+async function loadFromDB() {
+  try {
+    db = await openDB();
+    return new Promise((res) => {
+      try {
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get('data');
+        req.onsuccess = () => res(req.result || {});
+        req.onerror = () => res({});
+      } catch(e) { res({}); }
+    });
+  } catch {
+    // fallback: localStorage
+    try {
+      const d = localStorage.getItem('medData');
+      return d ? JSON.parse(d) : {};
+    } catch(e) { return {}; }
+  }
+}
+
+async function saveToDB() {
+  if (db) {
+    return new Promise((res) => {
+      try {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(data, 'data');
+        tx.oncomplete = res;
+        tx.onerror = res;
+      } catch(e) { res(); }
+    });
+  }
+  // fallback: try localStorage
+  try { localStorage.setItem('medData', JSON.stringify(data)); } catch(e) {}
+}
+
+function getTaken(dk, mid, t) { return !!(data[dk]?.[mid]?.[t]); }
+function setTaken(dk, mid, t, v) {
+  if (!data[dk]) data[dk] = {};
+  if (!data[dk][mid]) data[dk][mid] = {};
+  data[dk][mid][t] = v;
+  saveToDB();
+}
+
+// ============ EXPORT / IMPORT ============
+document.getElementById('saveBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const today = toKey(new Date());
+  a.download = `ліки-${today}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('💾 Дані збережено!');
+});
+
+document.getElementById('loadBtn').addEventListener('click', () => {
+  document.getElementById('fileInput').click();
+});
+
+document.getElementById('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      data = JSON.parse(ev.target.result);
+      saveToDB();
+      renderAll();
+      showToast('📂 Дані завантажено!');
+    } catch { showToast('❌ Помилка файлу'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// ============ DATE UTILS ============
+function toKey(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function parseKey(k) { const [y,m,d]=k.split('-'); return new Date(+y,+m-1,+d); }
+function daysBetween(a,b) { return Math.round((parseKey(b)-parseKey(a))/86400000); }
+
+let currentKey = toKey(new Date());
+
+// ============ SWIPE ============
+let tx0=0, ty0=0;
+document.addEventListener('touchstart', e => { tx0=e.touches[0].clientX; ty0=e.touches[0].clientY; }, {passive:true});
+document.addEventListener('touchend', e => {
+  const dx=e.changedTouches[0].clientX-tx0, dy=e.changedTouches[0].clientY-ty0;
+  if (Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>50) {
+    if (dx<0) goNext(); else goPrev();
+    document.getElementById('swipeHint').style.display='none';
+    try { localStorage.setItem('swipeHintSeen','1'); } catch(e) {}
+  }
+}, {passive:true});
+
+// ============ RENDER ============
+function courseStatus(med, dk) {
+  const ms = med.startDate || startDate;
+  const day = daysBetween(ms, dk)+1;
+  if (day<1) return {day, total:med.courseDays, finished:false, notStarted:true};
+  if (!med.courseDays) return {day, total:null, finished:false};
+  return {day, total:med.courseDays, finished: day>med.courseDays};
+}
+
+function formatDate(key) {
+  const d=parseKey(key), today=toKey(new Date());
+  const yesterday=toKey(new Date(Date.now()-86400000));
+  const tomorrow=toKey(new Date(Date.now()+86400000));
+  const days=['нд','пн','вт','ср','чт','пт','сб'];
+  const months=['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'];
+  let p='';
+  if (key===today) p='Сьогодні, ';
+  else if (key===yesterday) p='Вчора, ';
+  else if (key===tomorrow) p='Завтра, ';
+  else p=days[d.getDay()]+', ';
+  return p+d.getDate()+' '+months[d.getMonth()];
+}
+
+function countDoses(dk) {
+  let total=0, taken=0;
+  MEDS.forEach(med => {
+    const cs=courseStatus(med,dk);
+    if (cs.finished||cs.notStarted) return;
+    med.times.forEach(t => { total++; if(getTaken(dk,med.id,t)) taken++; });
+  });
+  return {total,taken};
+}
+
+function goPrev() { const d=parseKey(currentKey); d.setDate(d.getDate()-1); currentKey=toKey(d); renderAll(); }
+function goNext() { const d=parseKey(currentKey); d.setDate(d.getDate()+1); currentKey=toKey(d); renderAll(); }
+
+function renderAll() {
+  document.getElementById('dateLabel').textContent = formatDate(currentKey);
+  const {total,taken} = countDoses(currentKey);
+  const pct = total>0 ? taken/total : 0;
+  document.getElementById('ringCircle').style.strokeDashoffset = 144.5*(1-pct);
+  document.getElementById('ringNum').innerHTML = taken+'<span>з '+total+'</span>';
+
+  let title,sub;
+  if (total===0)         { title='Курс завершено 🎉'; sub='Всі ліки прийнято повністю'; }
+  else if (taken===0)    { title='Починаємо день!';   sub='Відміть прийняті ліки нижче'; }
+  else if (taken===total){ title='Молодець! ✅';      sub='Всі ліки сьогодні прийнято'; }
+  else                   { title=`Прийнято ${taken} з ${total}`; sub='Не забудь решту ліків'; }
+  document.getElementById('progressTitle').textContent = title;
+  document.getElementById('progressSub').textContent = sub;
+
+  const container = document.getElementById('medsContainer');
+  container.innerHTML = '';
+
+  MEDS.forEach(med => {
+    const cs = courseStatus(med, currentKey);
+    const allTimes = med.times;
+    const takenAll = !cs.finished && !cs.notStarted && allTimes.every(t=>getTaken(currentKey,med.id,t));
+
+    const card = document.createElement('div');
+    card.className = 'card'+(takenAll?' all-done':'');
+
+    let bClass=med.courseType==='long'?'long':'active', bText='';
+    if (cs.finished)        { bClass='done-course'; bText='Курс завершено'; }
+    else if (cs.notStarted) { bText='Починається скоро'; }
+    else if (!cs.total)     { bText='Постійно'; }
+    else                    { bText=`День ${cs.day} / ${cs.total}`; }
+
+    let barHtml='';
+    if (cs.total && !cs.finished && !cs.notStarted) {
+      const bp=Math.min(100,((cs.day-1)/cs.total)*100);
+      barHtml=`<div class="course-bar-wrap"><div class="course-bar-bg"><div class="course-bar-fill" style="width:${bp}%"></div></div><div class="course-bar-label">${Math.round(bp)}%</div></div>`;
+    }
+
+    const ni=med.note?(med.note.includes('Після')?'🍽️':med.note.includes('До')?'⏱️':'ℹ️'):'';
+    const noteHtml=med.note?`<div class="med-note">${ni} ${med.note}</div>`:'';
+
+    let dosesHtml='';
+    if (cs.notStarted) {
+      dosesHtml=`<div class="finished-msg">Починається з ${(med.startDate||startDate).split('-').reverse().slice(0,2).join('.')}</div>`;
+    } else if (cs.finished) {
+      dosesHtml=`<div class="finished-msg">Курс прийому завершено</div>`;
+    } else if (med.id==='laklin') {
+      const isTaken=getTaken(currentKey,med.id,'evening');
+      dosesHtml=`<div class="doses-row"><button class="once-btn ${isTaken?'taken':''}" data-med="${med.id}" data-time="evening"><span class="check">${isTaken?'✅':'💧'}</span>${isTaken?'Прийнято сьогодні':'Відмітити прийом'}</button></div>`;
+    } else {
+      const btns=allTimes.map(t=>{
+        const isTaken=getTaken(currentKey,med.id,t);
+        return `<button class="dose-btn ${isTaken?'taken':''}" data-med="${med.id}" data-time="${t}"><span class="dose-icon">${isTaken?'✅':med.timesIcon[t]}</span><span class="dose-time">${med.timesLabel[t]}</span><span class="dose-amount">${med.amount}</span></button>`;
+      }).join('');
+      dosesHtml=`<div class="doses-row">${btns}</div>`;
+    }
+
+    card.innerHTML=`<div class="card-top"><div class="card-header"><div class="med-name">${med.name}</div><div class="course-badge ${bClass}">${bText}</div></div><div class="med-info">${med.dose} · ${allTimes.length}×/день</div>${noteHtml}${barHtml}</div>${dosesHtml}`;
+    container.appendChild(card);
+  });
+
+  container.querySelectorAll('[data-med]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const medId=btn.dataset.med, time=btn.dataset.time;
+      const cur=getTaken(currentKey,medId,time);
+      setTaken(currentKey,medId,time,!cur);
+      if (navigator.vibrate) navigator.vibrate(10);
+      showToast(!cur?'✅ Прийнято!':'Відмінено');
+      renderAll();
+    });
+  });
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+document.getElementById('prevDay').addEventListener('click', goPrev);
+document.getElementById('nextDay').addEventListener('click', goNext);
+document.getElementById('dismissStorage').addEventListener('click', () => {
+  document.getElementById('storageBanner').classList.remove('show');
+});
+
+// ============ INIT ============
+(async () => {
+  try {
+    data = await loadFromDB();
+  } catch(e) {
+    data = {};
+  }
+  if (!db) {
+    document.getElementById('storageBanner').classList.add('show');
+  }
+  // hide swipe hint (localStorage may fail in QuickLook — wrap in try)
+  try {
+    if (localStorage.getItem('swipeHintSeen')) {
+      document.getElementById('swipeHint').style.display='none';
+    }
+  } catch(e) {}
+  renderAll();
+})();
+</script>
+</body>
+</html>
